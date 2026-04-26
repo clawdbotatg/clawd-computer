@@ -55,15 +55,15 @@ const menubarStyle: React.CSSProperties = {
   top: 0,
   left: 0,
   right: 0,
-  height: 20,
+  height: 32,
   background: "#c0c0c0",
   borderBottom: "1px solid #888",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "0 8px",
+  padding: "0 12px",
   zIndex: 9999,
-  fontSize: 12,
+  fontSize: 14,
   fontFamily: "'Chicago', 'Charcoal', system-ui, sans-serif",
   fontWeight: "bold",
   userSelect: "none",
@@ -120,20 +120,22 @@ export default function Desktop() {
 
   const openWindow = useCallback(
     (type: "about" | "backstage") => {
-      const existing = windows.find(w => w.content.type === type);
-      if (existing) {
-        focus(existing.id);
-        return;
-      }
-      topZRef.current += 1;
-      const id = `${type}-${nextId++}`;
       const defaults =
         type === "about"
           ? { title: "About clawd-computer", width: 380, height: 220 }
           : { title: "Backstage", width: 300, height: 260 };
-      setWindows(ws => [...ws, { id, x: 80, y: 80, zIndex: topZRef.current, content: { type }, ...defaults }]);
+      topZRef.current += 1;
+      const z = topZRef.current;
+      const existing = windows.find(w => w.content.type === type);
+      if (existing) {
+        // bring to front and snap to a visible position
+        setWindows(ws => ws.map(w => (w.id === existing.id ? { ...w, zIndex: z, x: 80, y: 60 } : w)));
+        return;
+      }
+      const id = `${type}-${nextId++}`;
+      setWindows(ws => [...ws, { id, x: 80, y: 60, zIndex: z, content: { type }, ...defaults }]);
     },
-    [windows, focus],
+    [windows],
   );
 
   return (
@@ -155,7 +157,7 @@ export default function Desktop() {
       </div>
 
       {/* Window layer */}
-      <div style={{ position: "absolute", inset: "20px 0 0 0", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: "32px 0 0 0", overflow: "hidden" }}>
         {windows.map(win => (
           <Window
             key={win.id}
