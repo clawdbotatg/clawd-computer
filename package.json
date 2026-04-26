@@ -1,0 +1,61 @@
+{
+  "name": "clawd-computer",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/hardhat",
+      "packages/nextjs"
+    ]
+  },
+  "scripts": {
+    "account": "yarn hardhat:account",
+    "account:import": "yarn workspace @clawd-computer/hardhat account:import",
+    "account:generate": "yarn workspace @clawd-computer/hardhat account:generate",
+    "account:reveal-pk": "yarn workspace @clawd-computer/hardhat account:reveal-pk",
+    "chain": "yarn hardhat:chain",
+    "compile": "yarn hardhat:compile",
+    "deploy": "yarn hardhat:deploy",
+    "fork": "yarn hardhat:fork",
+    "format": "yarn next:format && yarn hardhat:format",
+    "generate": "yarn account:generate",
+    "hardhat:account": "yarn workspace @clawd-computer/hardhat account",
+    "hardhat:chain": "yarn workspace @clawd-computer/hardhat chain",
+    "hardhat:check-types": "yarn workspace @clawd-computer/hardhat check-types",
+    "hardhat:clean": "yarn workspace @clawd-computer/hardhat clean",
+    "hardhat:compile": "yarn workspace @clawd-computer/hardhat compile",
+    "hardhat:deploy": "yarn workspace @clawd-computer/hardhat deploy",
+    "hardhat:flatten": "yarn workspace @clawd-computer/hardhat flatten",
+    "hardhat:fork": "yarn workspace @clawd-computer/hardhat fork",
+    "hardhat:format": "yarn workspace @clawd-computer/hardhat format",
+    "hardhat:generate": "yarn workspace @clawd-computer/hardhat generate",
+    "hardhat:hardhat-verify": "yarn workspace @clawd-computer/hardhat hardhat-verify",
+    "hardhat:lint": "yarn workspace @clawd-computer/hardhat lint",
+    "hardhat:lint-staged": "yarn workspace @clawd-computer/hardhat lint-staged",
+    "hardhat:test": "yarn workspace @clawd-computer/hardhat test",
+    "hardhat:verify": "yarn workspace @clawd-computer/hardhat verify",
+    "lint": "yarn next:lint && yarn hardhat:lint",
+    "next:build": "yarn workspace @clawd-computer/nextjs build",
+    "next:check-types": "yarn workspace @clawd-computer/nextjs check-types",
+    "next:format": "yarn workspace @clawd-computer/nextjs format",
+    "next:lint": "yarn workspace @clawd-computer/nextjs lint",
+    "next:serve": "yarn workspace @clawd-computer/nextjs serve",
+    "postinstall": "husky",
+    "precommit": "lint-staged",
+    "start": "yarn workspace @clawd-computer/nextjs dev",
+    "test": "yarn hardhat:test",
+    "vercel": "yarn workspace @clawd-computer/nextjs vercel",
+    "vercel:yolo": "yarn workspace @clawd-computer/nextjs vercel:yolo",
+    "ipfs": "yarn workspace @clawd-computer/nextjs ipfs",
+    "vercel:login": "yarn workspace @clawd-computer/nextjs vercel:login",
+    "verify": "yarn hardhat:verify"
+  },
+  "packageManager": "yarn@4.13.0",
+  "devDependencies": {
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10"
+  },
+  "engines": {
+    "node": ">=20.18.3"
+  }
+}

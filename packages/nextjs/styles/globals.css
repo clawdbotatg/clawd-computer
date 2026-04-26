@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme {
+  --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
+  --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@plugin "daisyui" {
+  themes: dark;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+
+  --color-primary: #cc2b2b;
+  --color-primary-content: #f9eded;
+  --color-secondary: #7b1010;
+  --color-secondary-content: #f9eded;
+  --color-accent: #cc2b2b;
+  --color-accent-content: #f9eded;
+  --color-neutral: #f9eded;
+  --color-neutral-content: #1e0a0a;
+  --color-base-100: #1e0a0a;
+  --color-base-200: #2d1212;
+  --color-base-300: #3d1818;
+  --color-base-content: #f9eded;
+  --color-info: #3d1818;
+  --color-success: #34eeb6;
+  --color-warning: #ffcf72;
+  --color-error: #e55a2b;
+
+  --radius-field: 1rem;
+  --radius-box: 1rem;
+  --tt-tailw: 6px;
+  --tt-bg: var(--color-primary);
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  p {
+    margin: 1rem 0;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin-bottom: 0.5rem;
+    line-height: 1;
+  }
+}
+
+:root,
+[data-theme] {
+  background: var(--color-base-200);
+}
+
+.btn {
+  @apply shadow-md;
+  border-radius: 9999rem;
+}
+
+.btn.btn-ghost {
+  @apply shadow-none;
+}
+
+.link {
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  opacity: 80%;
+}
