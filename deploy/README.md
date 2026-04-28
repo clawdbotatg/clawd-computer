@@ -39,16 +39,29 @@ sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 
 sudo cp deploy/clawd-computer.service /etc/systemd/system/
+sudo cp deploy/clawd-signaling.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now clawd-computer
+sudo systemctl enable --now clawd-computer clawd-signaling
 ```
 
 Check status:
 ```bash
-sudo systemctl status clawd-computer
+sudo systemctl status clawd-computer clawd-signaling
 sudo journalctl -u clawd-computer -f
+sudo journalctl -u clawd-signaling -f
 sudo journalctl -u caddy -f
 ```
+
+## Smoke test the signaling server
+
+After Caddy is up:
+```bash
+# from any machine, replace with your domain
+npx -y wscat -c wss://clawd.computer/ws
+> {"type":"hello","id":"alice"}
+< {"type":"peers","peers":[]}
+```
+Open a second terminal, repeat with `id: "bob"`. Alice will receive `peer_join`. Send `{"type":"signal","to":"alice","payload":{"hello":"world"}}` from bob and alice receives a relayed `signal` message.
 
 ## Updating
 
@@ -57,11 +70,11 @@ cd /home/ubuntu/clawd-computer
 git pull
 yarn install
 cd packages/nextjs && yarn build
-sudo systemctl restart clawd-computer
+sudo systemctl restart clawd-computer clawd-signaling
 ```
 
 ## Notes
 
 - HTTPS is required for `getUserMedia` / `getDisplayMedia`. Caddy handles certs automatically.
-- Signaling WebSocket server is not built yet — when it lands, uncomment the `/ws/*` block in `Caddyfile` and add a second systemd unit on `:8080`.
-- For TURN, start with Cloudflare Calls (free tier) before self-hosting `coturn`.
+- The signaling server in `packages/signaling/` is a pure relay — it never sees media. Plain Node + `ws`, no other deps.
+- For TURN (~20% of users sit behind blocked NAT), start with Cloudflare Calls (free tier) before self-hosting `coturn`.

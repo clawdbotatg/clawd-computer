@@ -1123,6 +1123,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@clawd-computer/signaling@workspace:packages/signaling":
+  version: 0.0.0-use.local
+  resolution: "@clawd-computer/signaling@workspace:packages/signaling"
+  dependencies:
+    ws: "npm:^8.18.0"
+  languageName: unknown
+  linkType: soft
+
 "@coinbase/cdp-sdk@npm:^1.0.0":
   version: 1.38.6
   resolution: "@coinbase/cdp-sdk@npm:1.38.6"
@@ -21569,6 +21577,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: 10/9c796b84ba80ffc2c2adcdfc9c8e9a219ba99caa435c9a8d45f9ac593bba325563b3f83edc5eb067cc6d21b9a6bf2c930adf76dd40af5f58a5ca6859e81858f0
+  languageName: node
+  linkType: hard
+
+"ws@npm:^8.18.0":
+  version: 8.20.0
+  resolution: "ws@npm:8.20.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10/b7ab934b21ffdea9f25a5af5097e8c1ec7625db553bca026c5a23e35b7c236f3fb89782f2b57fab9da553864512f9aa7d245827ef998d26ffa1b2187a19a6d10
   languageName: node
   linkType: hard
 
