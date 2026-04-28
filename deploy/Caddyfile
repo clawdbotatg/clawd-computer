@@ -1,0 +1,19 @@
+# clawd-computer reverse proxy
+#
+# Replace `clawd.computer` with your real domain. Caddy will auto-fetch
+# a Let's Encrypt cert on first start (port 80 + 443 must be reachable).
+#
+# WebSockets are upgraded automatically by `reverse_proxy`.
+
+clawd.computer {
+    encode zstd gzip
+
+    # Signaling WebSocket (server runs on :8080 — not yet built).
+    # Uncomment once the signaling server lands.
+    # handle_path /ws/* {
+    #     reverse_proxy localhost:8080
+    # }
+
+    # Next.js app
+    reverse_proxy localhost:3000
+}

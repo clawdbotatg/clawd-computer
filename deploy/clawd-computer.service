@@ -1,0 +1,16 @@
+[Unit]
+Description=clawd-computer Next.js (production)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/clawd-computer/packages/nextjs
+ExecStart=/home/ubuntu/clawd-computer/packages/nextjs/node_modules/.bin/next start -p 3000
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target

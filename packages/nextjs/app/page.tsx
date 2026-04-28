@@ -7,7 +7,11 @@ import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 
 let nextId = 1;
 
-type WinContent = { type: "about" } | { type: "backstage" } | { type: "camera"; stream: MediaStream };
+type WinContent =
+  | { type: "about" }
+  | { type: "backstage" }
+  | { type: "camera"; stream: MediaStream }
+  | { type: "screen"; stream: MediaStream };
 
 type WinDef = {
   id: string;
@@ -82,7 +86,9 @@ export default function Desktop() {
   const close = useCallback((id: string) => {
     setWindows(ws => {
       const win = ws.find(w => w.id === id);
-      if (win?.content.type === "camera") win.content.stream.getTracks().forEach(t => t.stop());
+      if (win?.content.type === "camera" || win?.content.type === "screen") {
+        win.content.stream.getTracks().forEach(t => t.stop());
+      }
       return ws.filter(w => w.id !== id);
     });
   }, []);
@@ -118,6 +124,39 @@ export default function Desktop() {
     }
   }, []);
 
+  const openScreen = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      topZRef.current += 1;
+      const id = `screen-${nextId++}`;
+      const track = stream.getVideoTracks()[0];
+      const label = track?.label ? `Screen — ${track.label}` : "Screen";
+      // auto-close window if user hits the browser's "Stop sharing" button
+      track?.addEventListener("ended", () => {
+        setWindows(ws => {
+          const win = ws.find(w => w.id === id);
+          if (win?.content.type === "screen") win.content.stream.getTracks().forEach(t => t.stop());
+          return ws.filter(w => w.id !== id);
+        });
+      });
+      setWindows(ws => [
+        ...ws,
+        {
+          id,
+          title: label,
+          x: 120 + (ws.length % 5) * 30,
+          y: 100 + (ws.length % 5) * 20,
+          width: 560,
+          height: 360,
+          zIndex: topZRef.current,
+          content: { type: "screen", stream },
+        },
+      ]);
+    } catch {
+      // user cancelled the picker — no-op
+    }
+  }, []);
+
   const openWindow = useCallback(
     (type: "about" | "backstage") => {
       const defaults =
@@ -150,6 +189,9 @@ export default function Desktop() {
           <span style={{ cursor: "pointer", padding: "0 4px" }} onClick={() => openWindow("backstage")}>
             Backstage
           </span>
+          <span style={{ cursor: "pointer", padding: "0 4px" }} onClick={openScreen}>
+            Share Screen
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center" }}>
           <RainbowKitCustomConnectButton />
@@ -172,7 +214,12 @@ export default function Desktop() {
             onDragStop={(x, y) => updatePos(win.id, x, y)}
             onResizeStop={(w, h, x, y) => updateSize(win.id, w, h, x, y)}
           >
-            <WindowContent content={win.content} onOpenCamera={openCamera} onOpenWindow={openWindow} />
+            <WindowContent
+              content={win.content}
+              onOpenCamera={openCamera}
+              onOpenScreen={openScreen}
+              onOpenWindow={openWindow}
+            />
           </Window>
         ))}
       </div>
@@ -183,10 +230,12 @@ export default function Desktop() {
 function WindowContent({
   content,
   onOpenCamera,
+  onOpenScreen,
   onOpenWindow,
 }: {
   content: WinContent;
   onOpenCamera: () => void;
+  onOpenScreen: () => void;
   onOpenWindow: (type: "about" | "backstage") => void;
 }) {
   const prose: React.CSSProperties = {
@@ -218,11 +267,16 @@ function WindowContent({
       <div style={prose}>
         <strong>Backstage</strong>
         <p style={{ margin: "8px 0" }}>
-          Connect your camera and mic. Your feed will appear as a draggable window on the desktop.
+          Connect your camera and mic, or share a window/screen. Each feed appears as a draggable window on the desktop.
         </p>
-        <button style={btnStyle} onClick={onOpenCamera}>
-          Connect Camera
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button style={btnStyle} onClick={onOpenCamera}>
+            Connect Camera
+          </button>
+          <button style={btnStyle} onClick={onOpenScreen}>
+            Share Screen
+          </button>
+        </div>
         <p style={{ margin: "12px 0 4px", color: "#555" }}>
           <em>WebRTC guests coming soon.</em>
         </p>
@@ -232,6 +286,10 @@ function WindowContent({
 
   if (content.type === "camera") {
     return <CameraView stream={content.stream} />;
+  }
+
+  if (content.type === "screen") {
+    return <CameraView stream={content.stream} fit="contain" />;
   }
 
   return null;

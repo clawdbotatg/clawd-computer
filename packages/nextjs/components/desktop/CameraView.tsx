@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export const CameraView = ({ stream }: { stream: MediaStream }) => {
+export const CameraView = ({ stream, fit = "cover" }: { stream: MediaStream; fit?: "cover" | "contain" }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -22,7 +22,7 @@ export const CameraView = ({ stream }: { stream: MediaStream }) => {
         style={{
           width: "100%",
           height: "100%",
-          objectFit: "cover",
+          objectFit: fit,
           display: ready ? "block" : "none",
         }}
       />
