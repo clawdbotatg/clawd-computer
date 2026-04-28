@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CameraView } from "~~/components/desktop/CameraView";
 import { Window } from "~~/components/desktop/Window";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { usePeerMesh } from "~~/hooks/usePeerMesh";
+import { getOrCreatePeerId } from "~~/utils/peerId";
+
+const SIGNALING_URL = process.env.NEXT_PUBLIC_SIGNALING_URL || "ws://localhost:8080";
 
 let nextId = 1;
 
@@ -11,7 +15,8 @@ type WinContent =
   | { type: "about" }
   | { type: "backstage" }
   | { type: "camera"; stream: MediaStream }
-  | { type: "screen"; stream: MediaStream };
+  | { type: "screen"; stream: MediaStream }
+  | { type: "remote"; peerId: string; stream: MediaStream };
 
 type WinDef = {
   id: string;
@@ -41,7 +46,7 @@ const INITIAL_WINDOWS: WinDef[] = [
     x: 480,
     y: 80,
     width: 300,
-    height: 260,
+    height: 280,
     zIndex: 2,
     content: { type: "backstage" },
   },
@@ -75,7 +80,16 @@ const menubarStyle: React.CSSProperties = {
 
 export default function Desktop() {
   const [windows, setWindows] = useState<WinDef[]>(INITIAL_WINDOWS);
+  const [myId, setMyId] = useState("");
   const topZRef = useRef(INITIAL_WINDOWS.length + 1);
+
+  useEffect(() => setMyId(getOrCreatePeerId()), []);
+
+  const { remotes, connected, addLocalStream, removeLocalStream } = usePeerMesh({
+    url: SIGNALING_URL,
+    myId,
+    enabled: !!myId,
+  });
 
   const focus = useCallback((id: string) => {
     topZRef.current += 1;
@@ -83,15 +97,19 @@ export default function Desktop() {
     setWindows(ws => ws.map(w => (w.id === id ? { ...w, zIndex: z } : w)));
   }, []);
 
-  const close = useCallback((id: string) => {
-    setWindows(ws => {
-      const win = ws.find(w => w.id === id);
-      if (win?.content.type === "camera" || win?.content.type === "screen") {
-        win.content.stream.getTracks().forEach(t => t.stop());
-      }
-      return ws.filter(w => w.id !== id);
-    });
-  }, []);
+  const close = useCallback(
+    (id: string) => {
+      setWindows(ws => {
+        const win = ws.find(w => w.id === id);
+        if (win?.content.type === "camera" || win?.content.type === "screen") {
+          removeLocalStream(win.content.stream);
+          win.content.stream.getTracks().forEach(t => t.stop());
+        }
+        return ws.filter(w => w.id !== id);
+      });
+    },
+    [removeLocalStream],
+  );
 
   const updatePos = useCallback((id: string, x: number, y: number) => {
     setWindows(ws => ws.map(w => (w.id === id ? { ...w, x, y } : w)));
@@ -110,7 +128,7 @@ export default function Desktop() {
         ...ws,
         {
           id,
-          title: "Camera",
+          title: "Camera (you)",
           x: 80 + (ws.length % 5) * 30,
           y: 80 + (ws.length % 5) * 20,
           width: 320,
@@ -119,10 +137,11 @@ export default function Desktop() {
           content: { type: "camera", stream },
         },
       ]);
+      addLocalStream(stream);
     } catch {
       alert("Could not access camera/mic — check browser permissions.");
     }
-  }, []);
+  }, [addLocalStream]);
 
   const openScreen = useCallback(async () => {
     try {
@@ -131,11 +150,13 @@ export default function Desktop() {
       const id = `screen-${nextId++}`;
       const track = stream.getVideoTracks()[0];
       const label = track?.label ? `Screen — ${track.label}` : "Screen";
-      // auto-close window if user hits the browser's "Stop sharing" button
       track?.addEventListener("ended", () => {
         setWindows(ws => {
           const win = ws.find(w => w.id === id);
-          if (win?.content.type === "screen") win.content.stream.getTracks().forEach(t => t.stop());
+          if (win?.content.type === "screen") {
+            removeLocalStream(win.content.stream);
+            win.content.stream.getTracks().forEach(t => t.stop());
+          }
           return ws.filter(w => w.id !== id);
         });
       });
@@ -152,22 +173,22 @@ export default function Desktop() {
           content: { type: "screen", stream },
         },
       ]);
+      addLocalStream(stream);
     } catch {
       // user cancelled the picker — no-op
     }
-  }, []);
+  }, [addLocalStream, removeLocalStream]);
 
   const openWindow = useCallback(
     (type: "about" | "backstage") => {
       const defaults =
         type === "about"
           ? { title: "About clawd-computer", width: 380, height: 220 }
-          : { title: "Backstage", width: 300, height: 260 };
+          : { title: "Backstage", width: 300, height: 280 };
       topZRef.current += 1;
       const z = topZRef.current;
       const existing = windows.find(w => w.content.type === type);
       if (existing) {
-        // bring to front and snap to a visible position
         setWindows(ws => ws.map(w => (w.id === existing.id ? { ...w, zIndex: z, x: 80, y: 60 } : w)));
         return;
       }
@@ -177,9 +198,35 @@ export default function Desktop() {
     [windows],
   );
 
+  // Sync remote streams from the mesh into the windows list.
+  useEffect(() => {
+    setWindows(ws => {
+      const remoteStreamIds = new Set(remotes.map(r => r.stream.id));
+      const kept = ws.filter(w => w.content.type !== "remote" || remoteStreamIds.has(w.content.stream.id));
+      const presentIds = new Set(
+        kept.filter(w => w.content.type === "remote").map(w => (w.content as { stream: MediaStream }).stream.id),
+      );
+      const additions: WinDef[] = [];
+      for (const r of remotes) {
+        if (presentIds.has(r.stream.id)) continue;
+        topZRef.current += 1;
+        additions.push({
+          id: `remote-${r.stream.id}`,
+          title: `Peer — ${r.peerId.slice(0, 6)}`,
+          x: 240 + ((additions.length * 32) % 240),
+          y: 160 + ((additions.length * 24) % 200),
+          width: 360,
+          height: 280,
+          zIndex: topZRef.current,
+          content: { type: "remote", peerId: r.peerId, stream: r.stream },
+        });
+      }
+      return [...kept, ...additions];
+    });
+  }, [remotes]);
+
   return (
     <div style={desktopStyle}>
-      {/* Menu bar */}
       <div style={menubarStyle}>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <span style={{ fontSize: 14 }}>🍎</span>
@@ -193,12 +240,14 @@ export default function Desktop() {
             Share Screen
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: "normal", color: connected ? "#1a6e1a" : "#888" }}>
+            {connected ? `● live · ${remotes.length} peer${remotes.length === 1 ? "" : "s"}` : "○ offline"}
+          </span>
           <RainbowKitCustomConnectButton />
         </div>
       </div>
 
-      {/* Window layer */}
       <div style={{ position: "absolute", inset: "32px 0 0 0", overflow: "hidden" }}>
         {windows.map(win => (
           <Window
@@ -216,6 +265,9 @@ export default function Desktop() {
           >
             <WindowContent
               content={win.content}
+              myId={myId}
+              connected={connected}
+              peerCount={remotes.length}
               onOpenCamera={openCamera}
               onOpenScreen={openScreen}
               onOpenWindow={openWindow}
@@ -229,11 +281,17 @@ export default function Desktop() {
 
 function WindowContent({
   content,
+  myId,
+  connected,
+  peerCount,
   onOpenCamera,
   onOpenScreen,
   onOpenWindow,
 }: {
   content: WinContent;
+  myId: string;
+  connected: boolean;
+  peerCount: number;
   onOpenCamera: () => void;
   onOpenScreen: () => void;
   onOpenWindow: (type: "about" | "backstage") => void;
@@ -267,7 +325,8 @@ function WindowContent({
       <div style={prose}>
         <strong>Backstage</strong>
         <p style={{ margin: "8px 0" }}>
-          Connect your camera and mic, or share a window/screen. Each feed appears as a draggable window on the desktop.
+          Connect your camera and mic, or share a window/screen. Each feed appears as a draggable window — for you and
+          for every peer connected to this room.
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button style={btnStyle} onClick={onOpenCamera}>
@@ -277,8 +336,10 @@ function WindowContent({
             Share Screen
           </button>
         </div>
-        <p style={{ margin: "12px 0 4px", color: "#555" }}>
-          <em>WebRTC guests coming soon.</em>
+        <p style={{ margin: "12px 0 0", color: "#555", fontSize: 11 }}>
+          you: <code>{myId.slice(0, 8) || "…"}</code>
+          <br />
+          status: {connected ? `live · ${peerCount} peer${peerCount === 1 ? "" : "s"}` : "connecting…"}
         </p>
       </div>
     );
@@ -289,6 +350,10 @@ function WindowContent({
   }
 
   if (content.type === "screen") {
+    return <CameraView stream={content.stream} fit="contain" />;
+  }
+
+  if (content.type === "remote") {
     return <CameraView stream={content.stream} fit="contain" />;
   }
 
